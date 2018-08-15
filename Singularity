@@ -12,7 +12,7 @@ From: centos:centos7
     # Enable devtoolset-7
     source /opt/rh/devtoolset-7/enable
 
-    # Build dependencies (zlib, HDF5)
+    # Build dependencies (zlib, HDF5, NetCDF-C, NetCDF-Fortran, Open MPI)
     cd /tmp
     export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
@@ -38,7 +38,7 @@ From: centos:centos7
     make install
     cd /tmp
 
-    # Buidl NetCDF-C
+    # Build NetCDF-C
     NETCDF_C_VERSION=4.6.1
     curl -L https://github.com/Unidata/netcdf-c/archive/v${NETCDF_C_VERSION}.tar.gz -o netcdf-c-${NETCDF_C_VERSION}.tar.gz
     tar -xf netcdf-c-${NETCDF_C_VERSION}.tar.gz
@@ -48,7 +48,7 @@ From: centos:centos7
     make install
     cd /tmp
 
-    # Build NetCDF-F
+    # Build NetCDF-Fortran
     NETCDF_F_VERSION=4.4.4
     curl -L https://github.com/Unidata/netcdf-fortran/archive/v${NETCDF_F_VERSION}.tar.gz -o netcdf-fortran-${NETCDF_F_VERSION}.tar.gz
     tar -xf netcdf-fortran-${NETCDF_F_VERSION}.tar.gz
@@ -58,7 +58,7 @@ From: centos:centos7
     make install
     cd /tmp
 
-    # Install Open MPI
+    # Build Open MPI
     OMPI_MAJOR=2.1
     OMPI_MINOR=2
     OMPI_VERSION=${OMPI_MAJOR}.${OMPI_MINOR}
@@ -68,10 +68,10 @@ From: centos:centos7
     ./configure --prefix=/usr/local
     make -j4
     make install
-    cd /
-    rm -rf /tmp/openmpi*
 
     # Additional setup
+    cd /
+    rm -rf /tmp/*
     ln -s /usr/lib64/gfortran/modules/netcdf.mod /usr/include/netcdf.mod
     mkdir /mnt/gc-extdata /mnt/gc-source /mnt/gc-unittest /mnt/gc-rundirs
     chmod a+rw /mnt/gc-*
