@@ -72,7 +72,10 @@ From: centos:centos7
     # Additional setup
     cd /
     rm -rf /tmp/*
-    ln -s /usr/lib64/gfortran/modules/netcdf.mod /usr/include/netcdf.mod
+    ln -s /usr/local/include/netcdf.mod /usr/include/netcdf.mod
+    ln -s /usr/local/bin/nc-config /usr/bin/nc-config
+    ln -s /usr/local/bin/nf-config /usr/bin/nf-config
+    ln -s /usr/local/include/netcdf.inc /usr/include/netcdf.inc
     mkdir /mnt/gc-extdata /mnt/gc-source /mnt/gc-unittest /mnt/gc-rundirs
     chmod a+rw /mnt/gc-*
  
