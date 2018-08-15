@@ -1,152 +1,113 @@
-BootStrap: docker
+Bootstrap: docker
 From: centos:centos7
 
 %post
-    # ====================
-    #   Install basics
-    # ====================
+    # Setup system
     yum -y update
-    yum install -y make wget vim git m4 bzip2 bc numpy-f2py centos-release-scl
-    yum install -y devtoolset-7-gcc-gfortran devtoolset-7-gcc-c++
-    yum clean all # clean-up cache
+    yum -y install centos-release-scl                               # Additional repositories
+    yum -y install devtoolset-7-gcc-gfortran devtoolset-7-gcc-c++   # GNU compilers 7.x
+    yum -y install make git file tar curl vim file m4               # More tools
+    yum clean all
+    
+    # Enable devtoolset-7
+    source /opt/rh/devtoolset-7/enable
 
-    # ====================
-    #   Install NetCDF
-    # ====================
-
-    export installDir=/usr
-    export ZDIR=$installDir
-    export H5DIR=$installDir
-    export NCDIR=$installDir
-    export NFDIR=$installDir
-
-    export DIR=/opt/rh/devtoolset-7/root/usr/bin
-    export CC=$DIR/gcc
-    export CXX=$DIR/g++
-    export F77=$DIR/gfortran
-    export FC=$DIR/gfortran
-
+    # Build dependencies (zlib, HDF5)
     cd /tmp
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
-    # == zlib ==
-    wget https://zlib.net/zlib-1.2.11.tar.gz
-    tar -xzf zlib-1.2.11.tar.gz
-    cd zlib-1.2.11
-    ./configure --prefix=${ZDIR}
+    # Build zlib
+    ZLIB_VERSION=1.2.11
+    curl -L https://zlib.net/zlib-${ZLIB_VERSION}.tar.gz -o zlib-${ZLIB_VERSION}.tar.gz
+    tar -xf zlib-${ZLIB_VERSION}.tar.gz
+    cd zlib-${ZLIB_VERSION}
+    ./configure --prefix=/usr/local
     make -j4
     make install
-
     cd /tmp
 
-    # == HDF5 ==
-    wget https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.2/src/hdf5-1.10.2.tar.gz
-    tar -xzf hdf5-1.10.2.tar.gz
-    cd hdf5-1.10.2
-    ./configure --with-zlib=${ZDIR} --prefix=${H5DIR}
+    # Build HDF5
+    HDF5_MAJOR=1.10
+    HDF5_MINOR=2
+    HDF5_VERSION=${HDF5_MAJOR}.${HDF5_MINOR}
+    curl -L https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-${HDF5_MAJOR}/hdf5-${HDF5_VERSION}/src/hdf5-${HDF5_VERSION}.tar.gz -o hdf5-${HDF5_VERSION}.tar.gz
+    tar -xf hdf5-${HDF5_VERSION}.tar.gz
+    cd hdf5-${HDF5_VERSION}
+    ./configure --prefix=/usr/local
     make -j4
     make install
-
     cd /tmp
 
-    # == NetCDF-C ==
-    wget https://github.com/Unidata/netcdf-c/archive/v4.6.1.tar.gz
-    tar -xzf v4.6.1.tar.gz
-    cd netcdf-c-4.6.1
-    # don't need remote access
-    CPPFLAGS=-I${H5DIR}/include LDFLAGS=-L${H5DIR}/lib ./configure --prefix=${NCDIR} --disable-dap
+    # Buidl NetCDF-C
+    NETCDF_C_VERSION=4.6.1
+    curl -L https://github.com/Unidata/netcdf-c/archive/v${NETCDF_C_VERSION}.tar.gz -o netcdf-c-${NETCDF_C_VERSION}.tar.gz
+    tar -xf netcdf-c-${NETCDF_C_VERSION}.tar.gz
+    cd netcdf-c-${NETCDF_C_VERSION}
+    ./configure --prefix=/usr/local --disable-dap
     make -j4
     make install
-
     cd /tmp
 
-    # == NetCDF-Fortran ==
-    export LD_LIBRARY_PATH=${NCDIR}/lib:${LD_LIBRARY_PATH}
-    wget https://github.com/Unidata/netcdf-fortran/archive/v4.4.4.tar.gz
-    tar -xzf v4.4.4.tar.gz
-    cd netcdf-fortran-4.4.4
-    CPPFLAGS=-I${NCDIR}/include LDFLAGS=-L${NCDIR}/lib ./configure --prefix=${NFDIR}
+    # Build NetCDF-F
+    NETCDF_F_VERSION=4.4.4
+    curl -L https://github.com/Unidata/netcdf-fortran/archive/v${NETCDF_F_VERSION}.tar.gz -o netcdf-fortran-${NETCDF_F_VERSION}.tar.gz
+    tar -xf netcdf-fortran-${NETCDF_F_VERSION}.tar.gz
+    cd netcdf-fortran-${NETCDF_F_VERSION}
+    ./configure --prefix=/usr/local
     make -j4
     make install
-
     cd /tmp
 
-    # ====================
-    #   Install MPI
-    # ====================
-
-    # == MPICH ==
-    # https://www.mpich.org/downloads/
-    wget http://www.mpich.org/static/downloads/3.2.1/mpich-3.2.1.tar.gz
-    tar zxf mpich-3.2.1.tar.gz
-    cd mpich-3.2.1
-    ./configure prefix=/usr/local/mpich
+    # Install Open MPI
+    OMPI_MAJOR=2.1
+    OMPI_MINOR=2
+    OMPI_VERSION=${OMPI_MAJOR}.${OMPI_MINOR}
+    curl -L https://www.open-mpi.org/software/ompi/v${OMPI_MAJOR}/downloads/openmpi-${OMPI_VERSION}.tar.gz -o /tmp/openmpi-${OMPI_VERSION}.tar.gz
+    tar -xf openmpi-${OMPI_VERSION}.tar.gz
+    cd openmpi-${OMPI_VERSION}
+    ./configure --prefix=/usr/local
     make -j4
     make install
+    cd /
+    rm -rf /tmp/openmpi*
 
-    cd /tmp
-
-    # ====================
-    #   Clean up
-    # ====================
-
-    rm -rf /tmp/*
-
+    # Additional setup
+    ln -s /usr/lib64/gfortran/modules/netcdf.mod /usr/include/netcdf.mod
+    mkdir /mnt/gc-extdata /mnt/gc-source /mnt/gc-unittest /mnt/gc-rundirs
+    chmod a+rw /mnt/gc-*
+ 
 %environment
-    # fix Singularity + Perl error
-    # https://groups.google.com/a/lbl.gov/forum/#!msg/singularity/58Xr72oDfBg/m3Y7Nr_PBAAJ
-    export LANG=C
-
-    # gfortran7
-    export PATH=/opt/rh/devtoolset-7/root/usr/bin:$PATH
-
-    # ====================================
-    # --- Same as GEOS-Chem classic  ---
-    # ====================================
-
-    export NETCDF_HOME=/usr
-    export NETCDF_FORTRAN_HOME=/usr
-    export LD_LIBRARY_PATH=/usr/lib:$LD_LIBRARY_PATH # for libnetcdff.so
+    source scl_source enable devtoolset-7
 
     export FC=gfortran
+    export F77=$FC
+    export F90=$FC
+    export OMPI_FC=$FC
+    export COMPILER=$FC
+    export ESMF_COMPILER=$FC
+   
     export CC=gcc
+    export OMPI_CC=$CC
+
     export CXX=g++
+    export OMPI_CXX=$CXX
+    export NETCDF_HOME=/usr
+    export NETCDF_FORTRAN_HOME=/usr
 
     export GC_BIN=$NETCDF_HOME/bin
     export GC_INCLUDE=$NETCDF_HOME/include
-    export GC_LIB=$NETCDF_HOME/lib
+    export GC_LIB=$NETCDF_HOME/lib64
 
-    export GC_F_BIN=$NETCDF_FORTRAN_HOME/bin
-    export GC_F_INCLUDE=$NETCDF_FORTRAN_HOME/include
-    export GC_F_LIB=$NETCDF_FORTRAN_HOME/lib
+    export GC_F_BIN=$GC_BIN
+    export GC_F_INCLUDE=$GC_INCLUDE
+    export GC_F_LIB=$GC_LIB
 
-    # ====================================
-    # --- GCHP-specific settings  ---
-    # ====================================
-
-    export OMPI_CC=$CC
-    export OMPI_CXX=$CXX
-    export OMPI_FC=$FC
-    export F77=$FC
-    export F90=$FC
-    export COMPILER=$FC # needed for gfortran?
-
-    export MPI_ROOT=/usr/local/mpich
-    export PATH=$MPI_ROOT/bin:$PATH
-    export ESMF_COMM=mpich2
-
-    # ====================================
-    # --- Dirty fixes for MAPL  ---
-    # ====================================
-
-    # --- Fixes for header files ("#include <xxx.h>" statement) ---
-    # mpi.h locates at /usr/include so MAPL can find it
-    export CPATH=$GC_CODE_DIR/GCHP/Shared/MAPL_Base:$CPATH # MAPL_Generic.h
-    export CPATH=$GC_CODE_DIR/GCHP/Shared/GFDL_fms/shared/include:$CPATH # fms_platform.h
-    export CPATH=$GC_CODE_DIR/GCHP/gchp_standard/CodeDir/GCHP/ESMF/Linux/include:$CPATH # ESMF_ErrReturnCodes.inc
+    export ESMF_COMM=openmpi
+    export MPI_ROOT=/usr/local
+    export ESMF_BOPT=O
+    
+%files
+    container-runscript.sh /usr/local/bin/
 
 %runscript
-    echo "Container for GCHP environment"
-    echo "Please use run it interactively by, for example:"
-    echo "SINGULARITYENV_GC_CODE_DIR=~/GCHP/Code.v11-02_gchp singularity shell GCHP.simg"
-    echo "To enable coloring inside container, run:"
-    echo 'alias ls="ls --color=auto"'
+    exec /usr/local/bin/container-runscript.sh "$@" 
