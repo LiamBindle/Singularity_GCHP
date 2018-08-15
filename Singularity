@@ -78,6 +78,7 @@ From: centos:centos7
  
 %environment
     source scl_source enable devtoolset-7
+    export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib
 
     export FC=gfortran
     export F77=$FC
